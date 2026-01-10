@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Space_Grotesk } from "next/font/google";
 import "./globals.css";
-import Sidebar from "@/components/Sidebar"; // Import Sidebar here
 
 const inter = Inter({
   subsets: ["latin"],
@@ -28,13 +27,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased bg-[var(--background)]`}
+        className={`${inter.variable} ${spaceGrotesk.variable} font-sans antialiased bg-[var(--background)] text-[var(--foreground)]`}
       >
-        {/* Global Sidebar */}
-        <Sidebar />
-
-        {/* Main Content Wrapper (pushes content to the right of sidebar) */}
-        <div className="pl-64 min-h-screen">{children}</div>
+        {children}
       </body>
     </html>
   );

@@ -6,9 +6,9 @@ import { LayoutGrid, Calendar, Star, Hash, LogOut } from "lucide-react";
 import { clsx } from "clsx";
 
 const navItems = [
-  { icon: LayoutGrid, label: "All Tasks", href: "/" },
-  { icon: Calendar, label: "Today", href: "/today" },
-  { icon: Star, label: "Important", href: "/important" },
+  { icon: LayoutGrid, label: "All Tasks", href: "/dashboard" },
+  { icon: Calendar, label: "Today", href: "/dashboard/today" },
+  { icon: Star, label: "Important", href: "/dashboard/important" },
 ];
 
 const tags = [
