@@ -7,14 +7,14 @@ export interface Task {
   status: "todo" | "in-progress" | "done";
   priority: "low" | "medium" | "high";
   created_at: string;
-  due_date?: string; // We'll need this for the Today view
+  due_date?: string;
 }
 
 interface TaskStore {
   tasks: Task[];
   isLoading: boolean;
   fetchTasks: () => Promise<void>;
-  addTask: (title: string) => Promise<void>;
+  addTask: (title: string, dueDate?: string) => Promise<void>;
   toggleTask: (id: string, currentStatus: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
 }
@@ -34,7 +34,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ isLoading: false });
   },
 
-  addTask: async (title: string) => {
+  addTask: async (title: string, dueDate?: string) => {
     const tempId = Math.random().toString();
     const newTask: Task = {
       id: tempId,
@@ -42,6 +42,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       status: "todo",
       priority: "medium",
       created_at: new Date().toISOString(),
+      due_date: dueDate,
     };
 
     const currentTasks = get().tasks;
@@ -49,12 +50,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     const { data, error } = await supabase
       .from("tasks")
-      .insert([{ title }])
+      .insert([
+        {
+          title,
+          due_date: dueDate,
+        },
+      ])
       .select()
       .single();
 
     if (error) {
-      set({ tasks: currentTasks }); // Rollback
+      set({ tasks: currentTasks });
     } else {
       set((state) => ({
         tasks: state.tasks.map((t) => (t.id === tempId ? (data as Task) : t)),
@@ -62,7 +68,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  // 1. NEW: Toggle Completion
+  // 1. Toggle Completion
   toggleTask: async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "done" ? "todo" : "done";
 
@@ -85,7 +91,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  // 2. NEW: Delete Task
+  // 2. Delete Task
   deleteTask: async (id: string) => {
     const currentTasks = get().tasks;
 

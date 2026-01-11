@@ -4,6 +4,7 @@ import { useTaskStore, Task } from "@/store/useTaskStore";
 import { motion } from "framer-motion";
 import { Trash2, Check } from "lucide-react";
 import { clsx } from "clsx";
+import { format, isToday } from "date-fns";
 
 interface TaskItemProps {
   task: Task;
@@ -52,10 +53,29 @@ export default function TaskItem({ task }: TaskItemProps) {
         {task.title}
       </span>
 
+      {/* Date Badge */}
+      <span className="ml-auto text-xs text-gray-400 font-medium flex items-center gap-2">
+        {task.due_date && (
+          <span
+            className={clsx(
+              "px-2 py-1 rounded text-[10px] uppercase tracking-wider",
+              isToday(new Date(task.due_date))
+                ? "bg-green-100 text-green-700"
+                : "bg-gray-100 text-gray-500"
+            )}
+          >
+            {isToday(new Date(task.due_date))
+              ? "Today"
+              : format(new Date(task.due_date), "MMM d")}
+          </span>
+        )}
+      </span>
+
       {/* Delete Button (Visible on Hover) */}
       <button
         onClick={() => deleteTask(task.id)}
-        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all duration-200 p-2"
+        // Inside the Delete Button className:
+        className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 p-2"
         title="Delete task"
       >
         <Trash2 size={18} />

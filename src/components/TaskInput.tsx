@@ -2,20 +2,29 @@
 
 import { useState } from "react";
 import { useTaskStore } from "@/store/useTaskStore";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Calendar } from "lucide-react";
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 
 export default function TaskInput() {
   const [title, setTitle] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const addTask = useTaskStore((state) => state.addTask);
+  const pathname = usePathname();
+
+  const isTodayView = pathname === "/dashboard/today";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     setIsSubmitting(true);
-    await addTask(title);
+
+    // Determine the date based on context
+    const dueDate = isTodayView ? new Date().toISOString() : undefined;
+
+    await addTask(title, dueDate);
+
     setTitle("");
     setIsSubmitting(false);
   };
@@ -39,16 +48,21 @@ export default function TaskInput() {
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
-        placeholder="Add a new task..."
-        className="w-full bg-white border border-[var(--border)] text-gray-900 placeholder:text-gray-400 text-lg py-4 pl-12 pr-4 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] transition-all duration-300 font-medium"
+        placeholder={
+          isTodayView ? "Add a task for Today..." : "Add a new task..."
+        }
+        className="w-full bg-white border border-[var(--border)] text-gray-900 placeholder:text-gray-400 text-lg py-4 pl-12 pr-12 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] transition-all duration-300 font-medium"
       />
 
-      {/* Keyboard Hint */}
-      <div className="absolute right-4 top-1/2 -translate-y-1/2 hidden sm:flex items-center gap-1 opacity-0 group-focus-within:opacity-100 transition-opacity duration-200">
-        <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded border border-gray-200 font-medium">
-          Enter ↵
-        </span>
-      </div>
+      {/* Context Indicator (Shows a calendar icon if adding to Today) */}
+      {isTodayView && (
+        <div
+          className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--accent)]"
+          title="Adding to Today"
+        >
+          <Calendar size={18} />
+        </div>
+      )}
     </motion.form>
   );
 }
