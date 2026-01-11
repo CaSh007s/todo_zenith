@@ -3,30 +3,33 @@
 import { useEffect } from "react";
 import { useTaskStore } from "@/store/useTaskStore";
 import TaskInput from "@/components/TaskInput";
-import { motion, AnimatePresence } from "framer-motion";
+import TaskItem from "@/components/TaskItem";
+import { AnimatePresence } from "framer-motion";
 
-export default function Home() {
+export default function Dashboard() {
   const { tasks, fetchTasks, isLoading } = useTaskStore();
 
-  // Load tasks when the app starts
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
 
+  // Derived state
+  const activeTasks = tasks.filter((t) => t.status !== "done");
+  const completedTasks = tasks.filter((t) => t.status === "done");
+
   return (
     <main className="max-w-3xl mx-auto p-8 pt-20">
       <header className="mb-12">
-        <h1 className="text-4xl font-bold mb-2 tracking-tight">Focus.</h1>
+        <h1 className="text-4xl font-bold mb-2 tracking-tight font-[family-name:var(--font-space)]">
+          Focus.
+        </h1>
         <p className="text-gray-500 text-lg">
-          You have {tasks.filter((t) => t.status !== "done").length} pending
-          tasks.
+          You have {activeTasks.length} pending tasks.
         </p>
       </header>
 
-      {/* The Input Component */}
       <TaskInput />
 
-      {/* The Task List */}
       <div className="space-y-3">
         {isLoading && tasks.length === 0 ? (
           <p className="text-gray-400 text-center py-10">
@@ -34,37 +37,31 @@ export default function Home() {
           </p>
         ) : (
           <AnimatePresence mode="popLayout">
-            {tasks.map((task) => (
-              <motion.div
-                key={task.id}
-                layout
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className="group flex items-center gap-4 p-4 bg-white border border-[var(--border)] rounded-xl hover:shadow-md transition-all duration-200"
-              >
-                {/* Checkbox Circle */}
-                <button className="w-6 h-6 rounded-full border-2 border-gray-300 hover:border-[var(--accent)] transition-colors" />
-
-                <span className="text-lg text-gray-700 font-medium">
-                  {task.title}
-                </span>
-
-                <span className="ml-auto text-xs text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity">
-                  {new Date(task.created_at).toLocaleTimeString([], {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </motion.div>
+            {/* Render Active Tasks First */}
+            {activeTasks.map((task) => (
+              <TaskItem key={task.id} task={task} />
             ))}
+
+            {/* Then Render Completed Tasks */}
+            {completedTasks.length > 0 && (
+              <>
+                <div className="pt-8 pb-2">
+                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
+                    Completed
+                  </h3>
+                </div>
+                {completedTasks.map((task) => (
+                  <TaskItem key={task.id} task={task} />
+                ))}
+              </>
+            )}
           </AnimatePresence>
         )}
 
         {!isLoading && tasks.length === 0 && (
           <div className="text-center py-20 opacity-50">
             <p className="text-xl text-gray-300">No tasks yet.</p>
-            <p className="text-sm text-gray-400">Time to seize the day.</p>
+            <p className="text-sm text-gray-400">Carpe Diem.</p>
           </div>
         )}
       </div>
