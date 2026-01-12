@@ -21,7 +21,7 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="w-64 h-screen border-r border-[var(--border)] bg-[var(--background)] flex flex-col p-6 fixed left-0 top-0 z-50">
+    <aside className="hidden md:flex w-64 h-screen border-r border-[var(--border)] bg-[var(--background)] flex-col p-6 fixed left-0 top-0 z-50">
       {/* TEXT-ONLY LOGO */}
       <div className="mb-12 pt-2">
         <h1 className="font-[family-name:var(--font-space)] text-3xl font-black tracking-tighter text-[var(--foreground)] uppercase">
