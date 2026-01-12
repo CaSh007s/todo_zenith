@@ -2,18 +2,18 @@
 
 import { useTaskStore, Task } from "@/store/useTaskStore";
 import { motion } from "framer-motion";
-import { Trash2, Check, GripVertical } from "lucide-react"; // Added GripVertical
+import { Trash2, Check, GripVertical, Star } from "lucide-react";
 import { clsx } from "clsx";
 import { format, isToday } from "date-fns";
-import { useSortable } from "@dnd-kit/sortable"; // Hook
-import { CSS } from "@dnd-kit/utilities"; // CSS Helper
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 interface TaskItemProps {
   task: Task;
 }
 
 export default function TaskItem({ task }: TaskItemProps) {
-  const { toggleTask, deleteTask } = useTaskStore();
+  const { toggleTask, deleteTask, togglePriority } = useTaskStore();
   const isDone = task.status === "done";
 
   // DnD Hook
@@ -30,15 +30,11 @@ export default function TaskItem({ task }: TaskItemProps) {
     transform: CSS.Transform.toString(transform),
     transition,
     zIndex: isDragging ? 50 : "auto",
-    opacity: isDragging ? 0.5 : 1, // Fade out while dragging
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className="relative mb-3" // Wrapper for positioning
-    >
+    <div ref={setNodeRef} style={style} className="relative mb-3">
       <motion.div
         layout
         initial={{ opacity: 0, y: 10 }}
@@ -102,6 +98,25 @@ export default function TaskItem({ task }: TaskItemProps) {
             </span>
           )}
         </span>
+
+        {/* NEW: Priority Star Button */}
+        <button
+          onClick={() => togglePriority(task.id, task.priority)}
+          className={clsx(
+            "p-2 transition-colors duration-200",
+            task.priority === "high"
+              ? "text-yellow-400 hover:text-yellow-500"
+              : "text-gray-300 hover:text-yellow-400 opacity-0 group-hover:opacity-100 focus:opacity-100"
+          )}
+          title={
+            task.priority === "high" ? "Unmark Important" : "Mark Important"
+          }
+        >
+          <Star
+            size={18}
+            fill={task.priority === "high" ? "currentColor" : "none"}
+          />
+        </button>
 
         {/* Delete Button */}
         <button

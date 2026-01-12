@@ -19,6 +19,7 @@ interface TaskStore {
   toggleTask: (id: string, currentStatus: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   moveTask: (activeId: string, overId: string) => void;
+  togglePriority: (id: string, currentPriority: string) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -57,7 +58,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       .single();
 
     if (error) {
-      set({ tasks: currentTasks });
+      set({ tasks: currentTasks }); // Rollback
     } else {
       set((state) => ({
         tasks: state.tasks.map((t) => (t.id === tempId ? (data as Task) : t)),
@@ -100,7 +101,6 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  // THIS WAS MISSING:
   moveTask: (activeId: string, overId: string) => {
     const currentTasks = get().tasks;
     const oldIndex = currentTasks.findIndex((t) => t.id === activeId);
@@ -110,6 +110,29 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
       set({
         tasks: arrayMove(currentTasks, oldIndex, newIndex),
       });
+    }
+  },
+
+  // The Priority Function
+  togglePriority: async (id: string, currentPriority: string) => {
+    const newPriority = currentPriority === "high" ? "medium" : "high";
+
+    // Optimistic Update
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id ? { ...t, priority: newPriority } : t
+      ),
+    }));
+
+    // DB Call
+    const { error } = await supabase
+      .from("tasks")
+      .update({ priority: newPriority })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating priority:", error);
+      get().fetchTasks(); // Revert
     }
   },
 }));

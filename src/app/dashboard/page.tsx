@@ -5,6 +5,7 @@ import { useTaskStore } from "@/store/useTaskStore";
 import TaskInput from "@/components/TaskInput";
 import TaskItem from "@/components/TaskItem";
 import { AnimatePresence } from "framer-motion";
+// DnD Imports
 import {
   DndContext,
   closestCenter,
@@ -15,7 +16,6 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 import {
-  arrayMove,
   SortableContext,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
@@ -32,9 +32,9 @@ export default function Dashboard() {
   const activeTasks = tasks.filter((t) => t.status !== "done");
   const completedTasks = tasks.filter((t) => t.status === "done");
 
-  // DnD Sensors
+  // DnD Sensors (Input detection)
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), // Prevent accidental drags
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -89,6 +89,7 @@ export default function Dashboard() {
                   Completed
                 </h3>
                 {completedTasks.map((task) => (
+                  // We render these as plain TaskItems
                   <TaskItem key={task.id} task={task} />
                 ))}
               </div>
