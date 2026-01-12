@@ -14,6 +14,8 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { clsx } from "clsx";
+import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 const navItems = [
   { icon: LayoutGrid, label: "All Tasks", href: "/dashboard" },
@@ -30,6 +32,14 @@ const tags = [
 export default function MobileNav() {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setIsOpen(false); // Close drawer
+    router.push("/auth");
+    router.refresh();
+  };
 
   return (
     <>
@@ -122,7 +132,10 @@ export default function MobileNav() {
               </nav>
 
               <div className="pt-6 border-t border-[var(--border)]">
-                <button className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors">
+                <button
+                  onClick={handleSignOut}
+                  className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors"
+                >
                   <LogOut size={18} />
                   Sign Out
                 </button>

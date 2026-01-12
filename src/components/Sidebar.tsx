@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { LayoutGrid, Calendar, Star, Hash, LogOut } from "lucide-react";
 import { clsx } from "clsx";
+import { supabase } from "@/lib/supabase";
 
 const navItems = [
   { icon: LayoutGrid, label: "All Tasks", href: "/dashboard" },
@@ -19,6 +20,13 @@ const tags = [
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push("/auth");
+    router.refresh();
+  };
 
   return (
     <aside className="hidden md:flex w-64 h-screen border-r border-[var(--border)] bg-[var(--background)] flex-col p-6 fixed left-0 top-0 z-50">
@@ -72,9 +80,12 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* Footer */}
+      {/* Footer / Sign Out */}
       <div className="pt-6 border-t border-[var(--border)]">
-        <button className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors rounded-xl hover:bg-red-50">
+        <button
+          onClick={handleSignOut}
+          className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors rounded-xl hover:bg-red-50"
+        >
           <LogOut size={18} />
           Sign Out
         </button>

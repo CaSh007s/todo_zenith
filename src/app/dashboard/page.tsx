@@ -5,9 +5,24 @@ import { useTaskStore } from "@/store/useTaskStore";
 import TaskInput from "@/components/TaskInput";
 import TaskItem from "@/components/TaskItem";
 import { AnimatePresence } from "framer-motion";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
 
 export default function Dashboard() {
-  const { tasks, fetchTasks, isLoading } = useTaskStore();
+  const { tasks, fetchTasks, isLoading, moveTask } = useTaskStore();
 
   useEffect(() => {
     fetchTasks();
@@ -16,6 +31,19 @@ export default function Dashboard() {
   // Derived state
   const activeTasks = tasks.filter((t) => t.status !== "done");
   const completedTasks = tasks.filter((t) => t.status === "done");
+
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (active.id !== over?.id) {
+      moveTask(active.id as string, over?.id as string);
+    }
+  };
 
   return (
     <main className="max-w-3xl mx-auto p-8 pt-20">
@@ -36,33 +64,36 @@ export default function Dashboard() {
             Loading your mind...
           </p>
         ) : (
-          <AnimatePresence mode="popLayout">
-            {/* Render Active Tasks First */}
-            {activeTasks.map((task) => (
-              <TaskItem key={task.id} task={task} />
-            ))}
+          /* DnD Context Wrapper */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={activeTasks.map((t) => t.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              <AnimatePresence mode="popLayout">
+                {/* Active Tasks (Sortable) */}
+                {activeTasks.map((task) => (
+                  <TaskItem key={task.id} task={task} />
+                ))}
+              </AnimatePresence>
+            </SortableContext>
 
-            {/* Then Render Completed Tasks */}
+            {/* Completed Tasks (Not Sortable - kept separate) */}
             {completedTasks.length > 0 && (
-              <>
-                <div className="pt-8 pb-2">
-                  <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider">
-                    Completed
-                  </h3>
-                </div>
+              <div className="pt-8">
+                <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">
+                  Completed
+                </h3>
                 {completedTasks.map((task) => (
                   <TaskItem key={task.id} task={task} />
                 ))}
-              </>
+              </div>
             )}
-          </AnimatePresence>
-        )}
-
-        {!isLoading && tasks.length === 0 && (
-          <div className="text-center py-20 opacity-50">
-            <p className="text-xl text-gray-300">No tasks yet.</p>
-            <p className="text-sm text-gray-400">Carpe Diem.</p>
-          </div>
+          </DndContext>
         )}
       </div>
     </main>

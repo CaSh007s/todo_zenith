@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase";
+import { arrayMove } from "@dnd-kit/sortable";
 
 export interface Task {
   id: string;
@@ -17,6 +18,7 @@ interface TaskStore {
   addTask: (title: string, dueDate?: string) => Promise<void>;
   toggleTask: (id: string, currentStatus: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
+  moveTask: (activeId: string, overId: string) => void;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -50,12 +52,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     const { data, error } = await supabase
       .from("tasks")
-      .insert([
-        {
-          title,
-          due_date: dueDate,
-        },
-      ])
+      .insert([{ title, due_date: dueDate }])
       .select()
       .single();
 
@@ -68,18 +65,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  // 1. Toggle Completion
   toggleTask: async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === "done" ? "todo" : "done";
 
-    // Optimistic Update
     set((state) => ({
       tasks: state.tasks.map((t) =>
         t.id === id ? { ...t, status: newStatus } : t
       ),
     }));
 
-    // DB Call
     const { error } = await supabase
       .from("tasks")
       .update({ status: newStatus })
@@ -87,25 +81,35 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     if (error) {
       console.error("Error toggling task:", error);
-      get().fetchTasks(); // Revert on error
+      get().fetchTasks();
     }
   },
 
-  // 2. Delete Task
   deleteTask: async (id: string) => {
     const currentTasks = get().tasks;
 
-    // Optimistic Update
     set((state) => ({
       tasks: state.tasks.filter((t) => t.id !== id),
     }));
 
-    // DB Call
     const { error } = await supabase.from("tasks").delete().eq("id", id);
 
     if (error) {
       console.error("Error deleting task:", error);
-      set({ tasks: currentTasks }); // Revert
+      set({ tasks: currentTasks });
+    }
+  },
+
+  // THIS WAS MISSING:
+  moveTask: (activeId: string, overId: string) => {
+    const currentTasks = get().tasks;
+    const oldIndex = currentTasks.findIndex((t) => t.id === activeId);
+    const newIndex = currentTasks.findIndex((t) => t.id === overId);
+
+    if (oldIndex !== -1 && newIndex !== -1) {
+      set({
+        tasks: arrayMove(currentTasks, oldIndex, newIndex),
+      });
     }
   },
 }));
