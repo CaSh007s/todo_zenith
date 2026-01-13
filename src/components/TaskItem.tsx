@@ -1,8 +1,9 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import { useTaskStore, Task } from "@/store/useTaskStore";
 import { motion } from "framer-motion";
-import { Trash2, Check, GripVertical, Star } from "lucide-react";
+import { Trash2, Check, GripVertical, Star, Pencil } from "lucide-react";
 import { clsx } from "clsx";
 import { format, isToday } from "date-fns";
 import { useSortable } from "@dnd-kit/sortable";
@@ -13,7 +14,14 @@ interface TaskItemProps {
 }
 
 export default function TaskItem({ task }: TaskItemProps) {
-  const { toggleTask, deleteTask, togglePriority } = useTaskStore();
+  const { toggleTask, deleteTask, togglePriority, updateTaskTitle } =
+    useTaskStore();
+
+  // Local State for Editing
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(task.title);
+  const inputRef = useRef<HTMLInputElement>(null);
+
   const isDone = task.status === "done";
 
   // DnD Hook
@@ -33,6 +41,30 @@ export default function TaskItem({ task }: TaskItemProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  // Auto-focus input when editing starts
+  useEffect(() => {
+    if (isEditing && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isEditing]);
+
+  const handleSave = async () => {
+    if (editTitle.trim()) {
+      await updateTaskTitle(task.id, editTitle);
+    } else {
+      setEditTitle(task.title); // Revert if empty
+    }
+    setIsEditing(false);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") {
+      setEditTitle(task.title);
+      setIsEditing(false);
+    }
+  };
+
   return (
     <div ref={setNodeRef} style={style} className="relative mb-3">
       <motion.div
@@ -47,7 +79,7 @@ export default function TaskItem({ task }: TaskItemProps) {
             : "border-[var(--border)] hover:shadow-md"
         )}
       >
-        {/* Drag Handle (Visible on Hover) */}
+        {/* Drag Handle */}
         <button
           {...attributes}
           {...listeners}
@@ -56,11 +88,11 @@ export default function TaskItem({ task }: TaskItemProps) {
           <GripVertical size={18} />
         </button>
 
-        {/* Checkbox Button */}
+        {/* Checkbox */}
         <button
           onClick={() => toggleTask(task.id, task.status)}
           className={clsx(
-            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-200",
+            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors duration-200 shrink-0",
             isDone
               ? "bg-[var(--accent)] border-[var(--accent)]"
               : "border-gray-300 hover:border-[var(--accent)]"
@@ -69,63 +101,91 @@ export default function TaskItem({ task }: TaskItemProps) {
           {isDone && <Check size={14} className="text-white" strokeWidth={3} />}
         </button>
 
-        {/* Title */}
-        <span
-          className={clsx(
-            "text-lg font-medium flex-1 transition-all duration-200 select-none", // select-none prevents text highlighting while dragging
-            isDone
-              ? "text-gray-400 line-through decoration-gray-300"
-              : "text-gray-700"
-          )}
-        >
-          {task.title}
-        </span>
+        {/* EDIT MODE TOGGLE */}
+        {isEditing ? (
+          <input
+            ref={inputRef}
+            value={editTitle}
+            onChange={(e) => setEditTitle(e.target.value)}
+            onBlur={handleSave}
+            onKeyDown={handleKeyDown}
+            className="flex-1 text-lg font-medium text-gray-900 bg-gray-50 border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20"
+          />
+        ) : (
+          <span
+            onDoubleClick={() => setIsEditing(true)} // Double click shortcut
+            className={clsx(
+              "text-lg font-medium flex-1 transition-all duration-200 select-none cursor-pointer",
+              isDone
+                ? "text-gray-400 line-through decoration-gray-300"
+                : "text-gray-700"
+            )}
+          >
+            {task.title}
+          </span>
+        )}
 
         {/* Date Badge */}
-        <span className="text-xs text-gray-400 font-medium flex items-center gap-2">
-          {task.due_date && (
-            <span
-              className={clsx(
-                "px-2 py-1 rounded text-[10px] uppercase tracking-wider",
-                isToday(new Date(task.due_date))
-                  ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-500"
-              )}
+        {!isEditing && (
+          <span className="text-xs text-gray-400 font-medium flex items-center gap-2 shrink-0">
+            {task.due_date && (
+              <span
+                className={clsx(
+                  "px-2 py-1 rounded text-[10px] uppercase tracking-wider",
+                  isToday(new Date(task.due_date))
+                    ? "bg-green-100 text-green-700"
+                    : "bg-gray-100 text-gray-500"
+                )}
+              >
+                {isToday(new Date(task.due_date))
+                  ? "Today"
+                  : format(new Date(task.due_date), "MMM d")}
+              </span>
+            )}
+          </span>
+        )}
+
+        {/* Action Buttons (Hidden when editing) */}
+        {!isEditing && (
+          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+            {/* Edit Button */}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="text-gray-300 hover:text-[var(--accent)] transition-colors p-2"
+              title="Edit Title"
             >
-              {isToday(new Date(task.due_date))
-                ? "Today"
-                : format(new Date(task.due_date), "MMM d")}
-            </span>
-          )}
-        </span>
+              <Pencil size={18} />
+            </button>
 
-        {/* NEW: Priority Star Button */}
-        <button
-          onClick={() => togglePriority(task.id, task.priority)}
-          className={clsx(
-            "p-2 transition-colors duration-200",
-            task.priority === "high"
-              ? "text-yellow-400 hover:text-yellow-500"
-              : "text-gray-300 hover:text-yellow-400 opacity-0 group-hover:opacity-100 focus:opacity-100"
-          )}
-          title={
-            task.priority === "high" ? "Unmark Important" : "Mark Important"
-          }
-        >
-          <Star
-            size={18}
-            fill={task.priority === "high" ? "currentColor" : "none"}
-          />
-        </button>
+            {/* Priority Star */}
+            <button
+              onClick={() => togglePriority(task.id, task.priority)}
+              className={clsx(
+                "p-2 transition-colors duration-200",
+                task.priority === "high"
+                  ? "text-yellow-400 hover:text-yellow-500 opacity-100" // Always show if active
+                  : "text-gray-300 hover:text-yellow-400"
+              )}
+              title={
+                task.priority === "high" ? "Unmark Important" : "Mark Important"
+              }
+            >
+              <Star
+                size={18}
+                fill={task.priority === "high" ? "currentColor" : "none"}
+              />
+            </button>
 
-        {/* Delete Button */}
-        <button
-          onClick={() => deleteTask(task.id)}
-          className="text-gray-300 hover:text-red-500 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-all duration-200 p-2 ml-2"
-          title="Delete task"
-        >
-          <Trash2 size={18} />
-        </button>
+            {/* Delete Button */}
+            <button
+              onClick={() => deleteTask(task.id)}
+              className="text-gray-300 hover:text-red-500 transition-colors p-2"
+              title="Delete task"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );

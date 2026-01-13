@@ -20,6 +20,7 @@ interface TaskStore {
   deleteTask: (id: string) => Promise<void>;
   moveTask: (activeId: string, overId: string) => void;
   togglePriority: (id: string, currentPriority: string) => Promise<void>;
+  updateTaskTitle: (id: string, newTitle: string) => Promise<void>;
 }
 
 export const useTaskStore = create<TaskStore>((set, get) => ({
@@ -133,6 +134,26 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     if (error) {
       console.error("Error updating priority:", error);
       get().fetchTasks(); // Revert
+    }
+  },
+
+  updateTaskTitle: async (id: string, newTitle: string) => {
+    // 1. Optimistic Update (Instant UI feedback)
+    set((state) => ({
+      tasks: state.tasks.map((t) =>
+        t.id === id ? { ...t, title: newTitle } : t
+      ),
+    }));
+
+    // 2. Database Update
+    const { error } = await supabase
+      .from("tasks")
+      .update({ title: newTitle })
+      .eq("id", id);
+
+    if (error) {
+      console.error("Error updating task title:", error);
+      get().fetchTasks(); // Revert on error
     }
   },
 }));
