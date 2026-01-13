@@ -67,14 +67,15 @@ export default function Sidebar() {
           </h3>
           <div className="space-y-1">
             {tags.map((tag) => (
-              <button
+              <Link
                 key={tag.label}
+                href={`/dashboard/tags/${tag.label.toLowerCase()}`}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-500 hover:text-gray-900 transition-colors rounded-lg hover:bg-gray-50"
               >
                 <Hash size={14} />
                 {tag.label}
                 <span className={`ml-auto w-2 h-2 rounded-full ${tag.color}`} />
-              </button>
+              </Link>
             ))}
           </div>
         </div>

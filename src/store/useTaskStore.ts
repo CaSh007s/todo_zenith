@@ -7,6 +7,7 @@ export interface Task {
   title: string;
   status: "todo" | "in-progress" | "done";
   priority: "low" | "medium" | "high";
+  tag?: string; // Ensure this is here
   created_at: string;
   due_date?: string;
 }
@@ -15,7 +16,8 @@ interface TaskStore {
   tasks: Task[];
   isLoading: boolean;
   fetchTasks: () => Promise<void>;
-  addTask: (title: string, dueDate?: string) => Promise<void>;
+  // Updated signature to accept tag
+  addTask: (title: string, dueDate?: string, tag?: string) => Promise<void>;
   toggleTask: (id: string, currentStatus: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   moveTask: (activeId: string, overId: string) => void;
@@ -29,6 +31,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
   fetchTasks: async () => {
     set({ isLoading: true });
+    // We select '*' so it should grab the 'tag' column automatically
     const { data, error } = await supabase
       .from("tasks")
       .select("*")
@@ -38,28 +41,38 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ isLoading: false });
   },
 
-  addTask: async (title: string, dueDate?: string) => {
+  addTask: async (title: string, dueDate?: string, tag?: string) => {
     const tempId = Math.random().toString();
     const newTask: Task = {
       id: tempId,
       title,
       status: "todo",
       priority: "medium",
+      tag, // Optimistic: Show tag immediately
       created_at: new Date().toISOString(),
       due_date: dueDate,
     };
 
     const currentTasks = get().tasks;
+    // 1. Show it instantly
     set({ tasks: [newTask, ...currentTasks] });
 
+    // 2. Save to DB
     const { data, error } = await supabase
       .from("tasks")
-      .insert([{ title, due_date: dueDate }])
+      .insert([
+        {
+          title,
+          due_date: dueDate,
+          tag, // Sending the tag to Supabase
+        },
+      ])
       .select()
       .single();
 
     if (error) {
-      set({ tasks: currentTasks }); // Rollback
+      console.error("Supabase Error:", error.message); // This will tell us if column is missing
+      set({ tasks: currentTasks }); // ROLLBACK if error (This causes the disappearing act)
     } else {
       set((state) => ({
         tasks: state.tasks.map((t) => (t.id === tempId ? (data as Task) : t)),
@@ -114,18 +127,15 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     }
   },
 
-  // The Priority Function
   togglePriority: async (id: string, currentPriority: string) => {
     const newPriority = currentPriority === "high" ? "medium" : "high";
 
-    // Optimistic Update
     set((state) => ({
       tasks: state.tasks.map((t) =>
         t.id === id ? { ...t, priority: newPriority } : t
       ),
     }));
 
-    // DB Call
     const { error } = await supabase
       .from("tasks")
       .update({ priority: newPriority })
@@ -133,19 +143,17 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     if (error) {
       console.error("Error updating priority:", error);
-      get().fetchTasks(); // Revert
+      get().fetchTasks();
     }
   },
 
   updateTaskTitle: async (id: string, newTitle: string) => {
-    // 1. Optimistic Update (Instant UI feedback)
     set((state) => ({
       tasks: state.tasks.map((t) =>
         t.id === id ? { ...t, title: newTitle } : t
       ),
     }));
 
-    // 2. Database Update
     const { error } = await supabase
       .from("tasks")
       .update({ title: newTitle })
@@ -153,7 +161,7 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
 
     if (error) {
       console.error("Error updating task title:", error);
-      get().fetchTasks(); // Revert on error
+      get().fetchTasks();
     }
   },
 }));

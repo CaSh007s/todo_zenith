@@ -41,6 +41,19 @@ export default function TaskItem({ task }: TaskItemProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const getTagColor = (tag?: string) => {
+    switch (tag) {
+      case "work":
+        return "bg-emerald-500";
+      case "personal":
+        return "bg-blue-500";
+      case "learning":
+        return "bg-purple-500";
+      default:
+        return "hidden";
+    }
+  };
+
   // Auto-focus input when editing starts
   useEffect(() => {
     if (isEditing && inputRef.current) {
@@ -142,6 +155,14 @@ export default function TaskItem({ task }: TaskItemProps) {
                   : format(new Date(task.due_date), "MMM d")}
               </span>
             )}
+          </span>
+        )}
+
+        {/* NEW: Tag Badge */}
+        {!isEditing && task.tag && (
+          <span className="ml-3 px-2 py-1 rounded-full bg-gray-100 text-[10px] uppercase font-bold tracking-wider text-gray-500 flex items-center gap-2">
+            <span className={`w-2 h-2 rounded-full ${getTagColor(task.tag)}`} />
+            {task.tag}
           </span>
         )}
 
