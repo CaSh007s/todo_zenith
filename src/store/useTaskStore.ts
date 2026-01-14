@@ -16,8 +16,12 @@ interface TaskStore {
   tasks: Task[];
   isLoading: boolean;
   fetchTasks: () => Promise<void>;
-  // Updated signature to accept tag
-  addTask: (title: string, dueDate?: string, tag?: string) => Promise<void>;
+  addTask: (
+    title: string,
+    dueDate?: string,
+    tag?: string,
+    priority?: "low" | "medium" | "high"
+  ) => Promise<void>;
   toggleTask: (id: string, currentStatus: string) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   moveTask: (activeId: string, overId: string) => void;
@@ -41,38 +45,42 @@ export const useTaskStore = create<TaskStore>((set, get) => ({
     set({ isLoading: false });
   },
 
-  addTask: async (title: string, dueDate?: string, tag?: string) => {
+  addTask: async (
+    title: string,
+    dueDate?: string,
+    tag?: string,
+    priority: "low" | "medium" | "high" = "medium"
+  ) => {
     const tempId = Math.random().toString();
     const newTask: Task = {
       id: tempId,
       title,
       status: "todo",
-      priority: "medium",
-      tag, // Optimistic: Show tag immediately
+      priority: priority,
+      tag,
       created_at: new Date().toISOString(),
       due_date: dueDate,
     };
 
     const currentTasks = get().tasks;
-    // 1. Show it instantly
     set({ tasks: [newTask, ...currentTasks] });
 
-    // 2. Save to DB
     const { data, error } = await supabase
       .from("tasks")
       .insert([
         {
           title,
           due_date: dueDate,
-          tag, // Sending the tag to Supabase
+          tag,
+          priority, // Send to DB
         },
       ])
       .select()
       .single();
 
     if (error) {
-      console.error("Supabase Error:", error.message); // This will tell us if column is missing
-      set({ tasks: currentTasks }); // ROLLBACK if error (This causes the disappearing act)
+      console.error("Supabase Error:", error.message);
+      set({ tasks: currentTasks });
     } else {
       set((state) => ({
         tasks: state.tasks.map((t) => (t.id === tempId ? (data as Task) : t)),

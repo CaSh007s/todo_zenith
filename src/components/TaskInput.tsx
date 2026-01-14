@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react"; // Removed useEffect import
+import { useState } from "react";
 import { useTaskStore } from "@/store/useTaskStore";
 import { Plus, Loader2, Hash, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -34,13 +34,26 @@ const TAGS = [
 
 export default function TaskInput() {
   const pathname = usePathname();
+  const addTask = useTaskStore((state) => state.addTask);
+
+  // CONTEXT DETECTION
   const isTodayView = pathname === "/dashboard/today";
+  const isImportantView = pathname === "/dashboard/important";
 
+  // Check if we are in a tag page
+  const currentTagFromUrl = TAGS.find((t) =>
+    pathname.includes(`/tags/${t.id}`)
+  )?.id;
+
+  // SMART DEFAULTS
   const [title, setTitle] = useState("");
-  const [selectedTag, setSelectedTag] = useState<string | null>(null);
 
-  // FIX 1: Smart Initialization (No useEffect needed)
-  // If we start on "Today" view, default to today's date.
+  // Default tag to URL tag if present
+  const [selectedTag, setSelectedTag] = useState<string | null>(
+    currentTagFromUrl || null
+  );
+
+  // Default date to Today if on Today view
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(
     isTodayView ? new Date() : undefined
   );
@@ -48,24 +61,25 @@ export default function TaskInput() {
   const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const addTask = useTaskStore((state) => state.addTask);
-
-  // FIX 2: Deleted the useEffect block here
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
 
     setIsSubmitting(true);
 
-    // Use the selected date (which defaults correctly now)
     const dueDate = selectedDate ? selectedDate.toISOString() : undefined;
 
-    await addTask(title, dueDate, selectedTag || undefined);
+    // SMART PRIORITY: If on Important page, default to 'high'
+    const priority = isImportantView ? "high" : "medium";
+
+    // SMART TAG: Use selected tag OR the one forced by the URL
+    const finalTag = selectedTag || currentTagFromUrl;
+
+    await addTask(title, dueDate, finalTag || undefined, priority);
 
     setTitle("");
-    setSelectedTag(null);
-    // Only reset date if NOT on today view (keep it sticky for Today view)
+    // Only reset these if they weren't forced by the page context
+    if (!currentTagFromUrl) setSelectedTag(null);
     if (!isTodayView) setSelectedDate(undefined);
 
     setIsTagMenuOpen(false);
@@ -77,7 +91,7 @@ export default function TaskInput() {
   return (
     <div className="relative mb-8 z-20">
       <motion.form
-        // FIX 3: The 'key' prop forces a reset when URL changes
+        // Key ensures form resets when you switch pages
         key={pathname}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -97,7 +111,13 @@ export default function TaskInput() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={
-            isTodayView ? "Add a task for Today..." : "Add a new task..."
+            isImportantView
+              ? "Add an important task..."
+              : currentTagFromUrl
+              ? `Add a ${currentTagFromUrl} task...`
+              : isTodayView
+              ? "Add a task for Today..."
+              : "Add a new task..."
           }
           className="w-full bg-white border border-[var(--border)] text-gray-900 placeholder:text-gray-400 text-lg py-4 pl-12 pr-48 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] transition-all duration-300 font-medium"
         />
@@ -118,13 +138,16 @@ export default function TaskInput() {
             >
               <span className={`w-2 h-2 rounded-full ${activeTag.color}`} />
               <span className="hidden sm:inline">{activeTag.label}</span>
-              <button
-                type="button"
-                onClick={() => setSelectedTag(null)}
-                className="hover:text-red-500 ml-1"
-              >
-                <X size={14} />
-              </button>
+              {/* Only allow clearing tag if NOT enforced by URL */}
+              {!currentTagFromUrl && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedTag(null)}
+                  className="hover:text-red-500 ml-1"
+                >
+                  <X size={14} />
+                </button>
+              )}
             </div>
           ) : (
             <button
@@ -144,9 +167,9 @@ export default function TaskInput() {
         </div>
       </motion.form>
 
-      {/* TAG MENU */}
+      {/* TAG MENU (Hide if tag is enforced by URL) */}
       <AnimatePresence>
-        {isTagMenuOpen && !activeTag && (
+        {isTagMenuOpen && !activeTag && !currentTagFromUrl && (
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
