@@ -2,9 +2,18 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { LayoutGrid, Calendar, Star, Hash, LogOut } from "lucide-react";
+import {
+  LayoutGrid,
+  Calendar,
+  Star,
+  Hash,
+  LogOut,
+  Settings,
+} from "lucide-react";
 import { clsx } from "clsx";
 import { supabase } from "@/lib/supabase";
+import { useSettingsStore } from "@/store/useSettingsStore";
+import { useEffect } from "react";
 
 const navItems = [
   { icon: LayoutGrid, label: "All Tasks", href: "/dashboard" },
@@ -22,6 +31,13 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
 
+  // Fetch settings to display Avatar and Name
+  const { settings, fetchSettings } = useSettingsStore();
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     router.push("/auth");
@@ -30,11 +46,28 @@ export default function Sidebar() {
 
   return (
     <aside className="hidden md:flex w-64 h-screen border-r border-[var(--border)] bg-[var(--background)] flex-col p-6 fixed left-0 top-0 z-50">
-      {/* TEXT-ONLY LOGO */}
-      <div className="mb-12 pt-2">
-        <h1 className="font-[family-name:var(--font-space)] text-3xl font-black tracking-tighter text-[var(--foreground)] uppercase">
-          Zenith<span className="text-[var(--accent)]">.</span>
-        </h1>
+      {/* HEADER: AVATAR & NAME */}
+      <div className="mb-10 pt-2 flex items-center gap-3">
+        {settings?.avatar_seed ? (
+          <img
+            src={`https://api.dicebear.com/9.x/notionists/svg?seed=${settings.avatar_seed}&backgroundColor=e0e7ff,d1fae5,ffedd5`}
+            alt="Avatar"
+            className="w-10 h-10 rounded-full border border-gray-200 object-cover"
+          />
+        ) : (
+          // Placeholder while loading
+          <div className="w-10 h-10 bg-gray-100 rounded-full animate-pulse" />
+        )}
+
+        <div className="flex flex-col">
+          <h1 className="text-xl font-bold tracking-tighter font-[family-name:var(--font-space)] text-[var(--foreground)]">
+            Zenith<span className="text-[var(--accent)]">.</span>
+          </h1>
+          {/* Show Name or Fallback Title */}
+          <p className="text-xs text-gray-400 font-medium truncate max-w-[120px]">
+            {settings?.full_name || "Welcome Back"}
+          </p>
+        </div>
       </div>
 
       {/* Main Navigation */}
@@ -50,8 +83,8 @@ export default function Sidebar() {
               className={clsx(
                 "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 text-sm font-medium",
                 isActive
-                  ? "bg-white shadow-sm text-[var(--accent)]"
-                  : "text-gray-500 hover:bg-gray-100 hover:text-gray-900"
+                  ? "bg-white shadow-sm text-[var(--accent)] border border-gray-100"
+                  : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
               )}
             >
               <Icon size={18} />
@@ -81,8 +114,24 @@ export default function Sidebar() {
         </div>
       </nav>
 
+      {/* SETTINGS LINK */}
+      <div className="mt-auto pt-8">
+        <Link
+          href="/dashboard/settings"
+          className={clsx(
+            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+            pathname === "/dashboard/settings"
+              ? "bg-gray-100 text-gray-900 font-medium"
+              : "text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+          )}
+        >
+          <Settings size={20} />
+          <span>Settings</span>
+        </Link>
+      </div>
+
       {/* Footer / Sign Out */}
-      <div className="pt-6 border-t border-[var(--border)]">
+      <div className="pt-4 border-t border-[var(--border)] mt-2">
         <button
           onClick={handleSignOut}
           className="flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-gray-500 hover:text-red-600 transition-colors rounded-xl hover:bg-red-50"
