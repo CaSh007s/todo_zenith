@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState } from "react"; // Removed useEffect import
 import { useTaskStore } from "@/store/useTaskStore";
 import { Plus, Loader2, Hash, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
+import DatePicker from "./DatePicker";
 
 const TAGS = [
   {
@@ -32,14 +33,24 @@ const TAGS = [
 ];
 
 export default function TaskInput() {
+  const pathname = usePathname();
+  const isTodayView = pathname === "/dashboard/today";
+
   const [title, setTitle] = useState("");
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+
+  // FIX 1: Smart Initialization (No useEffect needed)
+  // If we start on "Today" view, default to today's date.
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(
+    isTodayView ? new Date() : undefined
+  );
+
   const [isTagMenuOpen, setIsTagMenuOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addTask = useTaskStore((state) => state.addTask);
-  const pathname = usePathname();
-  const isTodayView = pathname === "/dashboard/today";
+
+  // FIX 2: Deleted the useEffect block here
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -47,15 +58,16 @@ export default function TaskInput() {
 
     setIsSubmitting(true);
 
-    // Determine Date
-    const dueDate = isTodayView ? new Date().toISOString() : undefined;
+    // Use the selected date (which defaults correctly now)
+    const dueDate = selectedDate ? selectedDate.toISOString() : undefined;
 
-    // Add Task with explicit selectedTag
     await addTask(title, dueDate, selectedTag || undefined);
 
-    // Reset
     setTitle("");
     setSelectedTag(null);
+    // Only reset date if NOT on today view (keep it sticky for Today view)
+    if (!isTodayView) setSelectedDate(undefined);
+
     setIsTagMenuOpen(false);
     setIsSubmitting(false);
   };
@@ -64,9 +76,9 @@ export default function TaskInput() {
 
   return (
     <div className="relative mb-8 z-20">
-      {" "}
-      {/* z-20 ensures menu floats above items */}
       <motion.form
+        // FIX 3: The 'key' prop forces a reset when URL changes
+        key={pathname}
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         onSubmit={handleSubmit}
@@ -87,13 +99,16 @@ export default function TaskInput() {
           placeholder={
             isTodayView ? "Add a task for Today..." : "Add a new task..."
           }
-          className="w-full bg-white border border-[var(--border)] text-gray-900 placeholder:text-gray-400 text-lg py-4 pl-12 pr-32 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] transition-all duration-300 font-medium"
+          className="w-full bg-white border border-[var(--border)] text-gray-900 placeholder:text-gray-400 text-lg py-4 pl-12 pr-48 rounded-2xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/20 focus:border-[var(--accent)] transition-all duration-300 font-medium"
         />
 
         {/* RIGHT SIDE CONTROLS */}
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
-          {/* 1. Selected Tag Pill (Click 'X' to remove) */}
-          {activeTag && (
+        <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+          <DatePicker date={selectedDate} setDate={setSelectedDate} />
+
+          <div className="h-6 w-px bg-gray-200 mx-1" />
+
+          {activeTag ? (
             <div
               className={clsx(
                 "flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-bold",
@@ -102,7 +117,7 @@ export default function TaskInput() {
               )}
             >
               <span className={`w-2 h-2 rounded-full ${activeTag.color}`} />
-              {activeTag.label}
+              <span className="hidden sm:inline">{activeTag.label}</span>
               <button
                 type="button"
                 onClick={() => setSelectedTag(null)}
@@ -111,10 +126,7 @@ export default function TaskInput() {
                 <X size={14} />
               </button>
             </div>
-          )}
-
-          {/* 2. Tag Toggle Button */}
-          {!activeTag && (
+          ) : (
             <button
               type="button"
               onClick={() => setIsTagMenuOpen(!isTagMenuOpen)}
@@ -131,7 +143,8 @@ export default function TaskInput() {
           )}
         </div>
       </motion.form>
-      {/* THE DROPDOWN MENU */}
+
+      {/* TAG MENU */}
       <AnimatePresence>
         {isTagMenuOpen && !activeTag && (
           <motion.div
